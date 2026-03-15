@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Compound Interest Calculator</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      background: #1e293b;
+      border-radius: 16px;
+      padding: 32px;
+      width: 100%;
+      max-width: 700px;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: #f8fafc;
+    }
+
+    .subtitle {
+      font-size: 0.875rem;
+      color: #94a3b8;
+      margin-bottom: 28px;
+    }
+
+    .inputs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #94a3b8;
+    }
+
+    .input-wrap {
+      position: relative;
+    }
+
+    .prefix {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 10px 12px 10px 28px;
+      color: #f1f5f9;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="number"]:focus {
+      border-color: #6366f1;
+    }
+
+    input[type="number"].no-prefix {
+      padding-left: 12px;
+    }
+
+    .slider-field {
+      grid-column: 1 / -1;
+    }
+
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .slider-value {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #818cf8;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 4px;
+      -webkit-appearance: none;
+      background: #334155;
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #6366f1;
+      cursor: pointer;
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.3);
+    }
+
+    select {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: #f1f5f9;
+      font-size: 1rem;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .results {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .result-card {
+      background: #0f172a;
+      border-radius: 10px;
+      padding: 16px;
+      border: 1px solid #1e293b;
+    }
+
+    .result-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #64748b;
+      margin-bottom: 6px;
+    }
+
+    .result-value {
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+
+    .result-value.total { color: #818cf8; }
+    .result-value.interest { color: #34d399; }
+    .result-value.principal { color: #94a3b8; }
+
+    .chart-area {
+      position: relative;
+      height: 200px;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    .tooltip {
+      position: absolute;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.8rem;
+      pointer-events: none;
+      display: none;
+      white-space: nowrap;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+
+    .tooltip strong { color: #818cf8; font-size: 1rem; }
+
+    .rule72 {
+      margin-top: 20px;
+      padding: 14px 16px;
+      background: #0f172a;
+      border-radius: 10px;
+      border-left: 3px solid #6366f1;
+      font-size: 0.875rem;
+      color: #94a3b8;
+    }
+
+    .rule72 span { color: #818cf8; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Compound Interest Calculator</h1>
+    <p class="subtitle">See how your money grows over time</p>
+
+    <div class="inputs">
+      <div class="field">
+        <label>Initial Investment</label>
+        <div class="input-wrap">
+          <span class="prefix">$</span>
+          <input type="number" id="principal" value="10000" min="0">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Monthly Contribution</label>
+        <div class="input-wrap">
+          <span class="prefix">$</span>
+          <input type="number" id="monthly" value="200" min="0">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Annual Interest Rate</label>
+        <div class="input-wrap">
+          <span class="prefix">%</span>
+          <input type="number" id="rate" value="8" min="0" max="100" step="0.1">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Compound Frequency</label>
+        <select id="freq">
+          <option value="1">Annually</option>
+          <option value="4">Quarterly</option>
+          <option value="12" selected>Monthly</option>
+          <option value="365">Daily</option>
+        </select>
+      </div>
+
+      <div class="field slider-field">
+        <div class="slider-header">
+          <label>Time Period</label>
+          <span class="slider-value" id="yearsLabel">30 years</span>
+        </div>
+        <input type="range" id="years" min="1" max="50" value="30">
+      </div>
+    </div>
+
+    <div class="results">
+      <div class="result-card">
+        <div class="result-label">Total Value</div>
+        <div class="result-value total" id="total">$0</div>
+      </div>
+      <div class="result-card">
+        <div class="result-label">Interest Earned</div>
+        <div class="result-value interest" id="interest">$0</div>
+      </div>
+      <div class="result-card">
+        <div class="result-label">Amount Invested</div>
+        <div class="result-value principal" id="invested">$0</div>
+      </div>
+    </div>
+
+    <div class="chart-area">
+      <canvas id="chart"></canvas>
+      <div class="tooltip" id="tooltip"></div>
+    </div>
+
+    <div class="rule72" id="rule72"></div>
+  </div>
+
+  <script>
+    const fmt = n => '$' + Math.round(n).toLocaleString();
+
+    function calculate() {
+      const P = parseFloat(document.getElementById('principal').value) || 0;
+      const m = parseFloat(document.getElementById('monthly').value) || 0;
+      const r = (parseFloat(document.getElementById('rate').value) || 0) / 100;
+      const n = parseInt(document.getElementById('freq').value);
+      const t = parseInt(document.getElementById('years').value);
+
+      document.getElementById('yearsLabel').textContent = t + ' year' + (t !== 1 ? 's' : '');
+
+      const data = [];
+      for (let yr = 0; yr <= t; yr++) {
+        const compoundP = P * Math.pow(1 + r / n, n * yr);
+        let compoundM = 0;
+        if (r > 0) {
+          compoundM = m * (Math.pow(1 + r / n, n * yr) - 1) / (r / n);
+        } else {
+          compoundM = m * n * yr;
+        }
+        const totalInvested = P + m * 12 * yr;
+        data.push({ yr, total: compoundP + compoundM, invested: totalInvested });
+      }
+
+      const final = data[data.length - 1];
+      document.getElementById('total').textContent = fmt(final.total);
+      document.getElementById('interest').textContent = fmt(final.total - final.invested);
+      document.getElementById('invested').textContent = fmt(final.invested);
+
+      const doublingYears = r > 0 ? (72 / (r * 100)).toFixed(1) : '∞';
+      document.getElementById('rule72').innerHTML =
+        `<b>Rule of 72:</b> At ${(r*100).toFixed(1)}% annual return, your money doubles every <span>~${doublingYears} years</span>.`;
+
+      drawChart(data, t);
+    }
+
+    function drawChart(data, t) {
+      const canvas = document.getElementById('chart');
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      canvas.style.width = rect.width + 'px';
+      canvas.style.height = rect.height + 'px';
+
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+
+      const W = rect.width;
+      const H = rect.height;
+      const pad = { top: 10, right: 10, bottom: 30, left: 60 };
+      const cw = W - pad.left - pad.right;
+      const ch = H - pad.top - pad.bottom;
+
+      ctx.clearRect(0, 0, W, H);
+
+      const maxVal = Math.max(...data.map(d => d.total));
+
+      const xOf = i => pad.left + (i / t) * cw;
+      const yOf = v => pad.top + ch - (v / maxVal) * ch;
+
+      // Grid lines
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 4; i++) {
+        const y = pad.top + (i / 4) * ch;
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(pad.left + cw, y);
+        ctx.stroke();
+
+        ctx.fillStyle = '#475569';
+        ctx.font = '11px system-ui';
+        ctx.textAlign = 'right';
+        const val = maxVal * (1 - i / 4);
+        ctx.fillText(val >= 1e6 ? (val/1e6).toFixed(1)+'M' : val >= 1e3 ? (val/1e3).toFixed(0)+'K' : val.toFixed(0),
+          pad.left - 6, y + 4);
+      }
+
+      // Invested area
+      ctx.beginPath();
+      ctx.moveTo(xOf(0), yOf(data[0].invested));
+      data.forEach(d => ctx.lineTo(xOf(d.yr), yOf(d.invested)));
+      ctx.lineTo(xOf(t), yOf(0));
+      ctx.lineTo(xOf(0), yOf(0));
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(148,163,184,0.15)';
+      ctx.fill();
+
+      // Total area
+      ctx.beginPath();
+      ctx.moveTo(xOf(0), yOf(data[0].total));
+      data.forEach(d => ctx.lineTo(xOf(d.yr), yOf(d.total)));
+      ctx.lineTo(xOf(t), yOf(0));
+      ctx.lineTo(xOf(0), yOf(0));
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(99,102,241,0.2)';
+      ctx.fill();
+
+      // Total line
+      ctx.beginPath();
+      data.forEach((d, i) => i === 0 ? ctx.moveTo(xOf(d.yr), yOf(d.total)) : ctx.lineTo(xOf(d.yr), yOf(d.total)));
+      ctx.strokeStyle = '#6366f1';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      // Invested line
+      ctx.beginPath();
+      data.forEach((d, i) => i === 0 ? ctx.moveTo(xOf(d.yr), yOf(d.invested)) : ctx.lineTo(xOf(d.yr), yOf(d.invested)));
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // X-axis labels
+      ctx.fillStyle = '#475569';
+      ctx.font = '11px system-ui';
+      ctx.textAlign = 'center';
+      const step = t <= 20 ? 5 : 10;
+      for (let yr = 0; yr <= t; yr += step) {
+        ctx.fillText('Yr ' + yr, xOf(yr), H - 8);
+      }
+
+      // Hover
+      canvas._data = data;
+      canvas._pad = pad;
+      canvas._dims = { cw, ch, W, H };
+      canvas._maxVal = maxVal;
+      canvas._t = t;
+    }
+
+    // Tooltip
+    const canvas = document.getElementById('chart');
+    const tooltip = document.getElementById('tooltip');
+
+    canvas.addEventListener('mousemove', e => {
+      if (!canvas._data) return;
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const { pad, dims, t, maxVal } = { pad: canvas._pad, dims: canvas._dims, t: canvas._t, maxVal: canvas._maxVal };
+      const xOf = i => pad.left + (i / t) * dims.cw;
+      const yr = Math.round((mx - pad.left) / dims.cw * t);
+      if (yr < 0 || yr > t) { tooltip.style.display = 'none'; return; }
+
+      const d = canvas._data[yr];
+      tooltip.style.display = 'block';
+      tooltip.innerHTML = `<b>Year ${d.yr}</b><br>
+        Total: <strong>${fmt(d.total)}</strong><br>
+        Invested: ${fmt(d.invested)}<br>
+        Interest: <span style="color:#34d399">${fmt(d.total - d.invested)}</span>`;
+
+      let left = xOf(yr) + 12;
+      if (left + 160 > dims.W) left = xOf(yr) - 160;
+      tooltip.style.left = left + 'px';
+      tooltip.style.top = '10px';
+    });
+
+    canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+
+    document.querySelectorAll('input, select').forEach(el => el.addEventListener('input', calculate));
+
+    calculate();
+  </script>
+</body>
+</html>
