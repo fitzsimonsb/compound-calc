@@ -210,6 +210,67 @@
     }
 
     .rule72 span { color: #818cf8; font-weight: 700; }
+
+    .tax-toggle {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .tax-btn {
+      flex: 1;
+      padding: 10px 16px;
+      border-radius: 8px;
+      border: 2px solid #334155;
+      background: transparent;
+      color: #94a3b8;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tax-btn.active {
+      background: #6366f1;
+      border-color: #6366f1;
+      color: #fff;
+    }
+
+    .tax-btn.active.irish {
+      background: #16a34a;
+      border-color: #16a34a;
+    }
+
+    .tax-info {
+      display: none;
+      background: #052e16;
+      border: 1px solid #166534;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 20px;
+      font-size: 0.82rem;
+      color: #86efac;
+      line-height: 1.6;
+    }
+
+    .tax-info.visible { display: block; }
+    .tax-info strong { color: #4ade80; display: block; margin-bottom: 4px; font-size: 0.85rem; }
+
+    .tax-info .tax-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .tax-stat {
+      background: rgba(255,255,255,0.05);
+      border-radius: 6px;
+      padding: 8px 10px;
+    }
+
+    .tax-stat-val { font-size: 1rem; font-weight: 700; color: #4ade80; }
+    .tax-stat-lbl { font-size: 0.7rem; color: #86efac; opacity: 0.8; }
   </style>
 </head>
 <body>
@@ -217,19 +278,40 @@
     <h1>Compound Interest Calculator V2 (2026)</h1>
     <p class="subtitle">See how your money grows over time</p>
 
+    <div class="tax-toggle">
+      <button class="tax-btn active" id="btnNoTax" onclick="setMode('notax')">Without Tax</button>
+      <button class="tax-btn irish" id="btnIrishTax" onclick="setMode('irish')">🇮🇪 After Irish Tax</button>
+    </div>
+
+    <div class="tax-info" id="taxInfo">
+      <strong>Irish Tax Applied: DIRT (Deposit Interest Retention Tax)</strong>
+      DIRT is charged at <b>33%</b> on interest earned and is deducted annually at source,
+      which also reduces the compounding effect over time. The after-tax effective rate used is <b id="effectiveRate">—</b>.
+      <div class="tax-grid">
+        <div class="tax-stat">
+          <div class="tax-stat-val" id="taxPaid">—</div>
+          <div class="tax-stat-lbl">Total Tax Paid</div>
+        </div>
+        <div class="tax-stat">
+          <div class="tax-stat-val" id="afterTaxGain">—</div>
+          <div class="tax-stat-lbl">After-Tax Interest Kept</div>
+        </div>
+      </div>
+    </div>
+
     <div class="inputs">
       <div class="field">
         <label>Initial Investment</label>
         <div class="input-wrap">
-          <span class="prefix">$</span>
-          <input type="number" id="principal" value="10000" min="0">
+          <span class="prefix">€</span>
+          <input type="number" id="principal" value="100000" min="0">
         </div>
       </div>
 
       <div class="field">
         <label>Monthly Contribution</label>
         <div class="input-wrap">
-          <span class="prefix">$</span>
+          <span class="prefix">€</span>
           <input type="number" id="monthly" value="200" min="0">
         </div>
       </div>
@@ -238,7 +320,7 @@
         <label>Annual Interest Rate</label>
         <div class="input-wrap">
           <span class="prefix">%</span>
-          <input type="number" id="rate" value="8" min="0" max="100" step="0.1">
+          <input type="number" id="rate" value="3" min="0" max="100" step="0.1">
         </div>
       </div>
 
@@ -285,7 +367,33 @@
   </div>
 
   <script>
-    const fmt = n => '$' + Math.round(n).toLocaleString();
+    const fmt = n => '€' + Math.round(n).toLocaleString('en-IE');
+    const DIRT = 0.33;
+    let mode = 'notax';
+
+    function setMode(m) {
+      mode = m;
+      document.getElementById('btnNoTax').classList.toggle('active', m === 'notax');
+      document.getElementById('btnIrishTax').classList.toggle('active', m === 'irish');
+      document.getElementById('taxInfo').classList.toggle('visible', m === 'irish');
+      calculate();
+    }
+
+    function buildData(P, m, r, n, t) {
+      const data = [];
+      for (let yr = 0; yr <= t; yr++) {
+        const compoundP = P * Math.pow(1 + r / n, n * yr);
+        let compoundM = 0;
+        if (r > 0) {
+          compoundM = m * (Math.pow(1 + r / n, n * yr) - 1) / (r / n);
+        } else {
+          compoundM = m * 12 * yr;
+        }
+        const totalInvested = P + m * 12 * yr;
+        data.push({ yr, total: compoundP + compoundM, invested: totalInvested });
+      }
+      return data;
+    }
 
     function calculate() {
       const P = parseFloat(document.getElementById('principal').value) || 0;
@@ -296,32 +404,40 @@
 
       document.getElementById('yearsLabel').textContent = t + ' year' + (t !== 1 ? 's' : '');
 
-      const data = [];
-      for (let yr = 0; yr <= t; yr++) {
-        const compoundP = P * Math.pow(1 + r / n, n * yr);
-        let compoundM = 0;
-        if (r > 0) {
-          compoundM = m * (Math.pow(1 + r / n, n * yr) - 1) / (r / n);
-        } else {
-          compoundM = m * n * yr;
-        }
-        const totalInvested = P + m * 12 * yr;
-        data.push({ yr, total: compoundP + compoundM, invested: totalInvested });
+      const preTaxData = buildData(P, m, r, n, t);
+
+      let displayData;
+      if (mode === 'irish') {
+        const rAfterTax = r * (1 - DIRT);
+        displayData = buildData(P, m, rAfterTax, n, t);
+
+        const preFinal = preTaxData[preTaxData.length - 1];
+        const afterFinal = displayData[displayData.length - 1];
+        const preTaxInterest = preFinal.total - preFinal.invested;
+        const afterTaxInterest = afterFinal.total - afterFinal.invested;
+        const taxPaid = preTaxInterest - afterTaxInterest;
+
+        document.getElementById('effectiveRate').textContent = (r * (1 - DIRT) * 100).toFixed(2) + '%';
+        document.getElementById('taxPaid').textContent = fmt(taxPaid);
+        document.getElementById('afterTaxGain').textContent = fmt(afterTaxInterest);
+      } else {
+        displayData = preTaxData;
       }
 
-      const final = data[data.length - 1];
+      const final = displayData[displayData.length - 1];
       document.getElementById('total').textContent = fmt(final.total);
       document.getElementById('interest').textContent = fmt(final.total - final.invested);
       document.getElementById('invested').textContent = fmt(final.invested);
 
-      const doublingYears = r > 0 ? (72 / (r * 100)).toFixed(1) : '∞';
+      const effectiveR = mode === 'irish' ? r * (1 - DIRT) : r;
+      const doublingYears = effectiveR > 0 ? (72 / (effectiveR * 100)).toFixed(1) : '∞';
       document.getElementById('rule72').innerHTML =
-        `<b>Rule of 72:</b> At ${(r*100).toFixed(1)}% annual return, your money doubles every <span>~${doublingYears} years</span>.`;
+        `<b>Rule of 72:</b> At ${(effectiveR*100).toFixed(1)}% effective return, your money doubles every <span>~${doublingYears} years</span>.`;
 
-      drawChart(data, t);
+      drawChart(displayData, t, mode === 'irish' ? preTaxData : null);
     }
 
-    function drawChart(data, t) {
+    function drawChart(data, t, preTaxData = null) {
       const canvas = document.getElementById('chart');
       const dpr = window.devicePixelRatio || 1;
       const rect = canvas.parentElement.getBoundingClientRect();
@@ -341,7 +457,7 @@
 
       ctx.clearRect(0, 0, W, H);
 
-      const maxVal = Math.max(...data.map(d => d.total));
+      const maxVal = Math.max(...(preTaxData || data).map(d => d.total));
 
       const xOf = i => pad.left + (i / t) * cw;
       const yOf = v => pad.top + ch - (v / maxVal) * ch;
@@ -400,6 +516,17 @@
       ctx.stroke();
       ctx.setLineDash([]);
 
+      // Pre-tax ghost line (irish mode)
+      if (preTaxData) {
+        ctx.beginPath();
+        preTaxData.forEach((d, i) => i === 0 ? ctx.moveTo(xOf(d.yr), yOf(d.total)) : ctx.lineTo(xOf(d.yr), yOf(d.total)));
+        ctx.strokeStyle = 'rgba(99,102,241,0.35)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([6, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
       // X-axis labels
       ctx.fillStyle = '#475569';
       ctx.font = '11px system-ui';
@@ -411,6 +538,7 @@
 
       // Hover
       canvas._data = data;
+      canvas._preTaxData = preTaxData;
       canvas._pad = pad;
       canvas._dims = { cw, ch, W, H };
       canvas._maxVal = maxVal;
@@ -431,11 +559,13 @@
       if (yr < 0 || yr > t) { tooltip.style.display = 'none'; return; }
 
       const d = canvas._data[yr];
+      const pre = canvas._preTaxData ? canvas._preTaxData[yr] : null;
       tooltip.style.display = 'block';
       tooltip.innerHTML = `<b>Year ${d.yr}</b><br>
         Total: <strong>${fmt(d.total)}</strong><br>
         Invested: ${fmt(d.invested)}<br>
-        Interest: <span style="color:#34d399">${fmt(d.total - d.invested)}</span>`;
+        Interest: <span style="color:#34d399">${fmt(d.total - d.invested)}</span>`
+        + (pre ? `<br><span style="color:#818cf8;opacity:0.7">Pre-tax would be: ${fmt(pre.total)}</span>` : '');
 
       let left = xOf(yr) + 12;
       if (left + 160 > dims.W) left = xOf(yr) - 160;
